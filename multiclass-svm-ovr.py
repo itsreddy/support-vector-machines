@@ -79,7 +79,27 @@ def ovr_classifier(train_df, num_classes, dim, C=2):
 
         weights.append(w.value.reshape(-1))
         bs.append(b.value)
+    
+    W = np.array(weights)
+    B = np.array(bs)
+    return W, B
 
+def test(test_df, W, B, dim):
+    count = 0
+    total = test_df.shape[0]
+    y_test, y_pred = [], []
+    for i in range(total):
+
+        rec = test_df.iloc[i].to_numpy()
+        xi = rec[:dim] / 100
+        yi = rec[dim]
+        pred = np.argmax(W.dot(xi) + B)
+        y_test.append(yi)
+        y_pred.append(pred)
+        if pred == yi:
+            count += 1
+
+    return count, total, count/total
 
 base_path = os.getcwd()
 
@@ -90,3 +110,7 @@ num_classes = len(set(raw_df['Digit']))
 dim = len(raw_df.iloc[0]) - 1
 
 train_df, valid_df = split_data(raw_df)
+
+W, B = ovr_classifier(train_df, num_classes, dim)
+
+correct_count, total, accuracy = test(valid_df, W, B, dim)
