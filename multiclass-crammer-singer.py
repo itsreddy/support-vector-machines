@@ -34,44 +34,48 @@ def load_dataset(base_path, shuffle=True):
 def split_add_bias(raw_df, p=0.2):
     X = raw_df.drop(labels=['Digit'], axis='columns').to_numpy()
     y = raw_df['Digit'].to_numpy()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = p)
+    if p != 0.0:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = p)
+    else:
+        X_bias = np.hstack([X, np.ones((X.shape[0], 1))])
+        return X_bias, y
     X_train_bias = np.hstack([X_train, np.ones((X_train.shape[0], 1))])
     X_test_bias = np.hstack([X_test, np.ones((X_test.shape[0], 1))])
-    # X_bias = np.hstack([X, np.ones((X.shape[0], 1))])
     return X_train_bias, X_test_bias, y_train, y_test
 
-def crammer_singer_classifier(X_train_bias, y_train, C=2):
-    model = MultiClassClf(n_features=X_train_bias.shape[1], n_classes=10)
-    
-    return W, B
+def crammer_singer_classifier(X_train_bias, y_train, num_classes, n_jobs=2 C=1):
+    model = MultiClassClf(n_features=X_train_bias.shape[1], n_classes=num_classes)
+    # n-slack cutting plane ssvm
+    n_slack_svm = NSlackSSVM(model, n_jobs=n_jobs, verbose=0, 
+                            check_constraints=False, C=C,
+                            batch_size=100, tol=1e-2)
 
-def test_classifier(test_df, W, B, dim):
-    count = 0
-    total = test_df.shape[0]
-    y_test, y_pred = [], []
-    for i in range(total):
+    n_slack_svm.fit(X_train_bias, y_train)
+    return n_slack_svm
 
-        rec = test_df.iloc[i].to_numpy()
-        xi = rec[:dim] / 100
-        yi = rec[dim]
-        pred = np.argmax(W.dot(xi) + B)
-        y_test.append(yi)
-        y_pred.append(pred)
-        if pred == yi:
-            count += 1
+def test_classifier(classifier, X_test_bias, y_test):
+    y_pred = np.hstack(classifier.predict(X_test_bias))
+    accuracy_score = np.mean(y_pred == y_test)
+    return accuracy_score, y_pred
 
-    return count, total, count/total
+
+# main
 
 base_path = os.getcwd()
-
+validate = True
 
 raw_df, test_df = load_dataset(base_path)
 
 num_classes = len(set(raw_df['Digit']))
-dim = len(raw_df.iloc[0]) - 1
+n_dim = len(raw_df.iloc[0]) - 1
 
-train_df, valid_df = split_data(raw_df)
-
-W, B = ovr_classifier(train_df, num_classes, dim)
-
-correct_count, total, accuracy = test(valid_df, W, B, dim)
+if validate == True:
+    X_train_bias, X_test_bias, y_train, y_test split_add_bias(raw_df)
+    classifier = crammer_singer_classifier(X_train_bias, y_train, num_classes)
+    accuracy, _ = test_classifier(classifier, X_test_bias, y_test)
+    print("Accuracy of classifier on validation data: ", accuracy)
+else:
+    X_train_bias, X_test_bias, y_train, y_test split_add_bias(raw_df, p=0.0)
+    classifier = crammer_singer_classifier(X_train_bias, y_train, num_classes)
+    accuracy, _ = test_classifier(classifier, X_test_bias, y_test)
+    print("Accuracy of classifier on validation data: ", accuracy)

@@ -30,7 +30,7 @@ def create_dfs(train_df, num_classes):
         dfs.append(temp_df)
     return dfs
 
-def ovr_classifier(train_df, num_classes, dim, C=2):
+def ovr_classifier(train_df, num_classes, n_dim, C=2):
     weights, bs = [], []
     dfs = create_dfs(train_df, num_classes)
     for i in range(num_classes):
@@ -42,7 +42,7 @@ def ovr_classifier(train_df, num_classes, dim, C=2):
         restdf = pd.concat(rest, ignore_index=True, sort=False)
         data2 = restdf.to_numpy()
 
-        D = dim
+        D = n_dim
         N1 = data1.shape[0]
         N2 = data2.shape[0]
 
@@ -68,15 +68,15 @@ def ovr_classifier(train_df, num_classes, dim, C=2):
     B = np.array(bs)
     return W, B
 
-def test(test_df, W, B, dim):
+def test(test_df, W, B, n_dim):
     count = 0
     total = test_df.shape[0]
     y_test, y_pred = [], []
     for i in range(total):
 
         rec = test_df.iloc[i].to_numpy()
-        xi = rec[:dim] / 100
-        yi = rec[dim]
+        xi = rec[:n_dim] / 100
+        yi = rec[n_dim]
         pred = np.argmax(W.dot(xi) + B)
         y_test.append(yi)
         y_pred.append(pred)
@@ -91,10 +91,10 @@ base_path = os.getcwd()
 raw_df, test_df = load_dataset(base_path)
 
 num_classes = len(set(raw_df['Digit']))
-dim = len(raw_df.iloc[0]) - 1
+n_dim = len(raw_df.iloc[0]) - 1
 
 train_df, valid_df = split_data(raw_df)
 
-W, B = ovr_classifier(train_df, num_classes, dim)
+W, B = ovr_classifier(train_df, num_classes, n_dim)
 
-correct_count, total, accuracy = test(valid_df, W, B, dim)
+correct_count, total, accuracy = test(valid_df, W, B, n_dim)
